@@ -1,0 +1,143 @@
+Analyze the conversation to identify commands and distinguish them from general messages, even in ambiguous cases.
+                           
+    === CORE PARAMETERS MEMORY ===
+    Maintain persistent memory of these key parameters:
+    - Last product (for price/email commands)
+    - Last country (for price/email commands)
+    - Last vendor (for send commands)
+    - Last quantity (for send commands)
+
+    === STEP‑BY‑STEP LOGIC ===
+    1. *Check Latest Message*:
+    - Look at the very last user message.
+    - If it contains any command keywords ("scrape", "price", "email", "send", "show","find","home","stop") or provides required details (product, country, vendor, quantity), consider it a potential command.
+    - Also, if it is clearly answering a previous AI request (e.g., "Product name?"), mark it as a command.
+                           
+    2. *Context Recall & Placeholder Resolution*:
+    - If the last message is a command but *missing required fields*, or uses placeholders like “same product”, “same country”, “same vendor”, or “same quantity”:
+        1. *Scan the entire conversation* (all earlier messages) for the most recent values of those missing fields.
+        2. *Substitute* any “same …” placeholder with the recalled value.
+        3. *Merge* recalled details into the new command before output.
+
+    - *Example*:
+        
+        User: Scrape price for iPhone 16 in Bangladesh
+        [chat…]
+        User: give me price for same product
+        → Recall “iPhone 16 in Bangladesh” 
+        → command: scrape price for iPhone 16 in Bangladesh
+        
+
+    2a. *Command Consolidation*:
+    - For the identified latest command type (A‑F), scan ALL previous messages for any missing details.
+    - Merge those details into a consolidated command while preserving the original phrasing.
+        • For Price/Email Scraping: Ensure both product and country are present (using recall if needed).  
+        • For Sending Email: Ensure both vendor and quantity are provided (using recall if needed).  
+        • For Show Price/Email List: Simply use the trigger phrase.  
+        • For Home/Stop: Use the direct trigger phrase.
+
+    3. *General Message Check*:
+    - If the last message does not meet the command criteria, or if it only adds unrelated content (e.g., greetings, gratitude), classify it as a general message.
+
+    4. *Single Output Rule*:
+    - Your output should be based solely on the last user message. That means if the last message qualifies as a command (even after consolidation/recall), output it as the command.
+    - If the last message is general, output that message as a general message.
+    - Do not output multiple messages; only provide one final message indicating the status of the last message.
+
+    === COMMAND TYPES & CONSOLIDATION RULES ===
+    A. *Price/Email Scraping*:
+    - Required: Product + Country.
+    - Example:
+        User: "Find prices in Bangladesh"  
+        AI: "Please specify the product"  
+        User: "iPhone"  
+        → Output:  
+        command: find prices for iPhone in Bangladesh
+                           
+        User: "Find prices of Iphone"  
+        AI: "Please specify the country name and country code to proceed. Just mention the country name correctly we will figure out country code for you."  
+        User: "Bangladesh"  
+        → Output:  
+        command: find prices for iPhone in Bangladesh
+                           
+
+
+    B. *Send Email*:
+    - Required: Vendor + Quantity.
+    - Example:
+        User: "Send mail to Koko"  
+        User: "20 units"  
+        → Output:  
+        command: send mail to Koko for 20 units
+
+    C. *Show Price List*:
+    - Direct command: show price list
+
+    D. *Show Email List*:
+    - Direct command: show email list
+
+    E. *Go to Home Page*:
+    - Direct command: go to home page  
+    - Parameters auto‑populated:  
+        • user_id: from session  
+        • context: "go to home page,go to dash board, goto main menu ,goto start page"
+
+    F. *Stop Listening*:
+    - Direct command: stop listening  
+    - Parameters auto‑populated:  
+        • user_id: from session  
+        • context: "stop listening"
+
+    === EXAMPLES OF GENERAL MESSAGES ===
+    - "good"  
+    - "thank you"  
+    - "bye"  
+    - "see you later"
+
+    === EDGE CASE HANDLING ===
+    Case 1:  
+    User: "Scrape emails for product Z"  
+    User: "Country: France"  
+    User: "Thank you for scrapping"  # Acknowledgment → General  
+    → Output: general message: Thank you for scrapping
+
+    Case 2:  
+    User: "Send email to vendor X"  
+    User: "50 units"  
+    User: "Thanks!"  # Trailing gratitude → General  
+    → Output: general message: Thanks!
+
+    Case 3:  
+    User: "Show price list"  
+    User: "Good job!"  # Unrelated → General  
+    → Output: general message: Good job!
+
+    Case 4:  
+    User: "Scrape prices in India"  
+    User: "Product: Laptop"  
+    User: "Send email to vendor Y"  
+    User: "100 units"  
+    → Output: command: send email to vendor Y for 100 units (latest takes priority)
+
+    Case 5:  
+    User: "Go to home page"  
+    User: "Stop listening"  
+    → Output: command: stop listening (latest takes priority)
+
+    Case 6 (Context Recall):  
+    User: "Scrape price for iPhone 16 in Bangladesh"  
+    [general chat…]  
+    User: "Scrape email"  
+    → Output:  
+    command: scrape email for iPhone 16 in Bangladesh
+
+    === OUTPUT FORMAT ===  
+    You must output exactly one final message that is either:  
+    - command: <consolidated_command>  
+    OR  
+    - general message: <last_message>
+
+    This final output must be based solely on the very last user message, with any necessary consolidation or context recall applied.
+
+    Conversation:  
+    "{message}"
